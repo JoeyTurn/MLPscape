@@ -19,12 +19,29 @@ if __name__ == "__main__":
 
     args = parse_args() #default args
 
+    if args.TARGET_MONOMIALS is not None:
+        args.TARGET_MONOMIALS = [Monomial(m) for m in args.TARGET_MONOMIALS]
+    elif args.target_monomials_path:
+        target_monomials_json = load_json(args.target_monomials_path)
+        args.TARGET_MONOMIALS = [Monomial(m) for m in target_monomials_json]
+    elif args.TARGET_MONOMIALS is None:
+        args.TARGET_MONOMIALS = [Monomial({10: 1}), Monomial({190:1}), Monomial({0:2}), Monomial({2:1, 3:1}), Monomial({15:1, 20:1}), Monomial({0:3}),]
+        
+    if args.datasethps_path:
+        args.datasethps = load_json(args.datasethps_path)
+
     # Set any args that we want to differ
     args.ONLINE = True
     args.N_TRAIN=4000
     args.N_TEST=1000
     args.NUM_TRIALS = 3
     args.N_TOT = args.N_TEST+args.N_TRAIN
+    args.TARGET_MONOMIALS = [Monomial({0:1}), Monomial({1:1})]
+    args.NUM_TRIALS = 2
+    args.N_SAMPLES = [1024]
+
+    iterators = [args.N_SAMPLES, range(args.NUM_TRIALS), args.TARGET_MONOMIALS]
+    iterator_names = ["ntrain", "trial", "target_monomial"]
     
     datapath = os.getenv("DATASETPATH") #datapath = os.path.join(os.getenv(...))
     exptpath = os.getenv("EXPTPATH") #same here
@@ -41,17 +58,6 @@ if __name__ == "__main__":
     expt_fm = FileManager(expt_dir)
     print(f"Working in directory {expt_dir}.")
 
-    
-    if args.TARGET_MONOMIALS is not None:
-        args.TARGET_MONOMIALS = [Monomial(m) for m in args.TARGET_MONOMIALS]
-    elif args.target_monomials_path:
-        target_monomials_json = load_json(args.target_monomials_path)
-        args.TARGET_MONOMIALS = [Monomial(m) for m in target_monomials_json]
-    elif args.TARGET_MONOMIALS is None:
-        args.TARGET_MONOMIALS = [Monomial({10: 1}), Monomial({190:1}), Monomial({0:2}), Monomial({2:1, 3:1}), Monomial({15:1, 20:1}), Monomial({0:3}),]
-        
-    if args.datasethps_path:
-        args.datasethps = load_json(args.datasethps_path)
 
     from data.data import get_synthetic_X
     from data.monomial import generate_hea_monomials
@@ -84,13 +90,8 @@ if __name__ == "__main__":
     global_config.update({"otherreturns": grabs})
     
     mp.set_start_method("spawn", force=True)
-    sample_sizes = [100, 500, 1000]
-    trials = [0, 1, 2]
     
-    iterators = [args.N_SAMPLES, args.NUM_TRIALS, args.TARGET_MONOMIALS]
-    iterator_names = ["ntrain", "trial", "target_monomial"]
-    
-
     result = run_job_iterator(iterators, iterator_names, global_config, bfn_config=bfn_config)
+    print(f"Results saved to {expt_dir}")
     expt_fm.save(result, "result.pickle")
     torch.cuda.empty_cache()

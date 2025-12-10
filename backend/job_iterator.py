@@ -62,7 +62,7 @@ def main(iterators, iterator_names=None, global_config=None, bfn_config=None):
 
     # Create and start worker processes
     # Note: global_config and any needed configs should be passed to worker
-    procs = [ctx.Process(target=worker, args=(dev, job_queue, result_queue, global_config, iterator_names, bfn_config))
+    procs = [ctx.Process(target=worker, args=(dev, job_queue, result_queue, global_config, bfn_config, iterator_names))
              for dev in range(NUM_GPUS)]
     for p in procs:
         p.start()
@@ -77,7 +77,8 @@ def main(iterators, iterator_names=None, global_config=None, bfn_config=None):
             if kind == "ok":
                 # Unpack job and results
                 job, timekeys, train_losses, test_losses, *others = payload
-                
+                # print(job)
+                job = job[:-1] + (str(job[-1]),)
                 # Store results indexed by job tuple
                 et_losses[job] = test_losses
                 et_timekeys[job] = timekeys
@@ -86,7 +87,7 @@ def main(iterators, iterator_names=None, global_config=None, bfn_config=None):
                 for kidx, k in enumerate(grab_aliases):
                     et_extras[k][job] = others[kidx]
                 
-                if not(global_config.ONLYTHRESHOLDS):
+                if not(global_config["ONLYTHRESHOLDS"]):
                     train_losses = train_losses[-1]
                     test_losses = test_losses[-1]
                 

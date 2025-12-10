@@ -6,7 +6,7 @@ from model import MLP
 from .trainloop import train_MLP
 from .batch_functions import BATCH_FNS
 
-def run_job(device_id, job, global_config, iterator_names, bfn_config=None, **kwargs):
+def run_job(device_id, job, global_config, bfn_config, iterator_names, **kwargs):
     """
     job: (n, trial, else)
     global_config: anything read-only you want to avoid capturing from globals
@@ -23,9 +23,10 @@ def run_job(device_id, job, global_config, iterator_names, bfn_config=None, **kw
 
     torch.set_num_threads(1)  # avoid CPU contention when many procs
 
-    name = bfn_config["bfn_name"]
+    bfn_config_copy = bfn_config.copy()
+    name = bfn_config_copy.pop("bfn_name")#["bfn_name"]
     base_bfn = BATCH_FNS[name]
-    bfn = lambda n, X, y, gen, target_monomial: base_bfn(**bfn_config, monomials=target_monomial, bsz=n, gen=gen, X=X, y=y)
+    bfn = lambda n, X, y, gen, target_monomial: base_bfn(**bfn_config_copy, monomials=target_monomial, bsz=n, gen=gen, X=X, y=y)
     
     X_te, y_te = bfn(n=global_config["N_TEST"], X=None, y=None, gen=GEN, **{iterator_names[i]: job[i] for i in range(2, len(iterator_names))})(0)
     
