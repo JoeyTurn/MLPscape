@@ -5,18 +5,13 @@ import torch.multiprocessing as mp
 from tqdm import tqdm
 from itertools import product
 
-import sys, os
-import json
-
-sys.path.append("../")
-
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-from backend.utils import ensure_torch
+from .utils import ensure_torch
 
 from ExptTrace import ExptTrace
 
-from backend.worker import worker
+from .worker import worker
 
 
 ## --- Multiprocessing execution ---

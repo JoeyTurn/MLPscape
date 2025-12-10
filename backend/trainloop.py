@@ -1,8 +1,6 @@
 import numpy as np
 import torch
 from mupify import mupify, rescale
-# import sys
-# sys.path.append("/")
 from model import centeredMLP
 
 def train_MLP(model, batch_function, lr=1e-2, max_iter=int(1e3), loss_checkpoints=None, percent_thresholds=None,

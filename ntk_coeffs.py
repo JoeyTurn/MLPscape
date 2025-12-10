@@ -1,8 +1,6 @@
 ## relu ntk level coeffs
 
-import sys
 import numpy as np
-sys.path.append("../")
 from backend.utils import ensure_numpy
 
 @staticmethod

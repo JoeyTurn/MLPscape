@@ -51,7 +51,7 @@ class GrabRunner:
         return type(x).__name__
 
     def __call__(self, model, *_, **kwargs):
-        import mlp_grabs as m
+        import backend.mlp_grabs as m
 
         fn     = getattr(m, self.base_fn_name)
         merged = {**self.base_kwargs, **kwargs}
@@ -152,14 +152,6 @@ def build_other_grabs(spec, *, default_source="in", concat_outside=True, per_ali
         )
 
     return out
-
-# def set_data_eigvals_for_Tmb(grabs, data_eigvals, key="Tmb"):
-#     for name, runner in grabs.items():
-#         if (isinstance(name, str) and key in name) or getattr(runner, "base_fn_name", None) == key:
-#             runner.call_with_model = True
-#             # make sure base_kwargs exists and set/overwrite the value
-#             runner.base_kwargs = dict(getattr(runner, "base_kwargs", {}))
-#             runner.base_kwargs["data_eigvals"] = data_eigvals
 
 def set_data_eigvals_for_Tmb(grabs, data_eigvals, other_model_gram=None, key="Tmb"):
     for name, runner in grabs.items():

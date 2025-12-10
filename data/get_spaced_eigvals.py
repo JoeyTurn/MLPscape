@@ -7,9 +7,9 @@ from pathlib import Path
 
 sys.path.append("../")
 
-from models.mlp import get_relu_level_coeff_fn
-from monomial import generate_hea_monomials
-from data import get_powerlaw
+from ntk_coeffs import get_relu_level_coeff_fn
+from .monomial import generate_hea_monomials
+from .data import get_powerlaw
 
 def parse_args():
     p = argparse.ArgumentParser(description="Config for MLP training")

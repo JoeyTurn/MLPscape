@@ -1,8 +1,6 @@
-import sys
 import torch
-sys.path.append("../")
-from backend.utils import tuple_to_numpy
-from backend.job import run_job
+from .utils import tuple_to_numpy
+from .job import run_job
 
 def worker(device_id, job_queue, result_queue, global_config, bfn):
     try: torch.cuda.set_device(device_id)

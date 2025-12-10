@@ -1,9 +1,9 @@
 import torch
 import gc
 
-from backend.utils import seed_everything, derive_seed
+from .utils import seed_everything, derive_seed
 from model import MLP
-from backend.trainloop import train_MLP
+from .trainloop import train_MLP
 
 def run_job(device_id, job, global_config, iterator_names, bfn=None, **kwargs):
     """
