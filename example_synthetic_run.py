@@ -9,7 +9,7 @@ from data.data import polynomial_batch_fn
 from backend.job_iterator import main as run_job_iterator
 from backend.utils import ensure_torch, load_json
 
-from .ntk_coeffs import get_relu_level_coeff_fn
+from ntk_coeffs import get_relu_level_coeff_fn
 
 import os, sys
 from FileManager import FileManager
@@ -68,10 +68,8 @@ if __name__ == "__main__":
     if args.TARGET_FUNCTION_TYPE == "monomial":
         target_monomials = args.TARGET_MONOMIALS
         targets = target_monomials
-        bfn_config = dict(lambdas=lambdas, Vt=Vt, data_eigvals=data_eigvals, N=args.N_TOT)
+        bfn_config = dict(lambdas=lambdas, Vt=Vt, data_eigvals=data_eigvals, N=args.N_TOT, bfn_name="polynomial_batch_fn")
     
-
-    batch_function = lambda n, X, y, gen, target_monomial: polynomial_batch_fn(**bfn_config, monomials=target_monomial, bsz=n, gen=gen, X=X, y=y)
 
     global_config = dict(DEPTH=args.DEPTH, WIDTH=args.WIDTH, LR=args.LR, GAMMA=args.GAMMA,
         EMA_SMOOTHER=args.EMA_SMOOTHER, MAX_ITER=args.MAX_ITER,
@@ -93,6 +91,6 @@ if __name__ == "__main__":
     iterator_names = ["ntrain", "trial", "target_monomial"]
     
 
-    result = run_job_iterator(iterators, iterator_names, global_config, bfn=batch_function)
+    result = run_job_iterator(iterators, iterator_names, global_config, bfn_config=bfn_config)
     expt_fm.save(result, "result.pickle")
     torch.cuda.empty_cache()

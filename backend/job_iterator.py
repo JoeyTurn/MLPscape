@@ -15,7 +15,7 @@ from .worker import worker
 
 
 ## --- Multiprocessing execution ---
-def main(iterators, iterator_names=None, global_config=None, bfn=None):
+def main(iterators, iterator_names=None, global_config=None, bfn_config=None):
     """
     Run jobs across multiple iterators in parallel.
 
@@ -62,7 +62,7 @@ def main(iterators, iterator_names=None, global_config=None, bfn=None):
 
     # Create and start worker processes
     # Note: global_config and any needed configs should be passed to worker
-    procs = [ctx.Process(target=worker, args=(dev, job_queue, result_queue, global_config, iterator_names, bfn))
+    procs = [ctx.Process(target=worker, args=(dev, job_queue, result_queue, global_config, iterator_names, bfn_config))
              for dev in range(NUM_GPUS)]
     for p in procs:
         p.start()
