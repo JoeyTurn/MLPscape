@@ -51,7 +51,7 @@ class GrabRunner:
         return type(x).__name__
 
     def __call__(self, model, *_, **kwargs):
-        import backend.mlp_grabs as m
+        import data.mlp_grabs as m
 
         fn     = getattr(m, self.base_fn_name)
         merged = {**self.base_kwargs, **kwargs}
@@ -90,12 +90,10 @@ def build_other_grabs(spec, *, default_source="in", concat_outside=True, per_ali
     per_alias_gram:
         {
             "Wii1": {"source":"out","concat_outside":"True"},
-            "Tmb":  {"call_with_model": True},   # NEW
         }
     per_alias_kwargs:
         {
             "Wii1": {"i":1},
-            "Tmb":  {"data_eigvals": data_eigvals},  # baked in once
         }
     """
     per_alias_gram   = per_alias_gram   or {}
@@ -218,7 +216,7 @@ def parse_args():
     return p.parse_args()
 
 def base_args():
-    return {
+    return argparse.Namespace(**{
     "ONLINE": True,
     "N_TRAIN": 4000,
     "N_TEST": 10_000,
@@ -256,4 +254,4 @@ def base_args():
     "concat_outside": True,
     "other_model_gram": {},
     "other_model_kwargs": {},
-}
+})

@@ -137,4 +137,10 @@ def train_MLP(model, batch_function, lr=1e-2, max_iter=int(1e3), loss_checkpoint
                     extras[name] = val
             return return_statement(model, ema_tr, ema_te, timekeys, tr_losses, te_losses, extras)
 
+
+    if i == max_iter - 1:
+        if otherreturns is not None and only_thresholds:
+            for name, fn in items:
+                val = fn(model=model.model, X_tr=X_tr, y_tr=y_tr, X_te=X_te, y_te=y_te, **kwargs)
+                extras[name] = val
     return return_statement(model, ema_tr, ema_te, timekeys, tr_losses, te_losses, extras)

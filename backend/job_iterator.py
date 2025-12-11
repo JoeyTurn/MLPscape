@@ -42,9 +42,9 @@ def main(iterators, iterator_names=None, global_config=None, bfn_config=None):
     et_timekeys = ExptTrace(var_axes)
     
     # Get grab aliases from global_config if available
-    grab_aliases = list(global_config.other_model_grabs.keys()) if global_config and hasattr(global_config, 'other_model_grabs') else []
+    grab_aliases = list(global_config.get("otherreturns", {}).keys()) if global_config is not None else []
     et_extras = {alias: ExptTrace(var_axes) for alias in grab_aliases}
-
+    
     # Set up multiprocessing context and queues
     ctx = get_context("spawn")
     job_queue = ctx.Queue()
@@ -77,7 +77,6 @@ def main(iterators, iterator_names=None, global_config=None, bfn_config=None):
             if kind == "ok":
                 # Unpack job and results
                 job, timekeys, train_losses, test_losses, *others = payload
-                # print(job)
                 job = job[:-1] + (str(job[-1]),)
                 # Store results indexed by job tuple
                 et_losses[job] = test_losses
