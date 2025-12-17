@@ -1,11 +1,49 @@
 import numpy as np
 import torch
+import inspect
+import torch.nn as nn
+import torch.optim as optim
 from mupify import mupify, rescale
 from model import centeredMLP
 
+def _resolve_cls(spec, module):
+    """
+    Turn 'Adam' -> torch.optim.Adam, or just pass through callables.
+    """
+    if isinstance(spec, str):
+        try:
+            return getattr(module, spec)
+        except AttributeError:
+            raise ValueError(f"{spec!r} not found in {module.__name__}")
+    if callable(spec):
+        return spec
+    raise TypeError(f"optimizer/loss spec must be str or callable, got {type(spec)}")
+
+
+def _extract_kwargs_for(cls, kwargs):
+    """
+    Split kwargs into:
+      - subset that matches __init__ signature of cls
+      - the remaining kwargs
+
+    This works for both optimizers and loss modules.
+    """
+    sig = inspect.signature(cls.__init__)
+    valid = set(sig.parameters.keys()) - {"self"}  # e.g. {"params", "lr", "betas", ...}
+
+    used = {}
+    rest = {}
+    for k, v in kwargs.items():
+        if k in valid:
+            used[k] = v
+        else:
+            rest[k] = v
+    return used, rest
+
+
 def train_MLP(model, batch_function, lr=1e-2, max_iter=int(1e3), loss_checkpoints=None, percent_thresholds=None,
                   gamma=1., ema_smoother=0.0, X_tr=None, y_tr=None, X_te=None, y_te=None, only_thresholds=False,
-                  verbose=False, **kwargs):
+                  verbose=False, optimizer="SGD", loss="MSELoss", **kwargs):
     """
     Returns:
         dict of model, train_losses, test_losses, timekeys, others
@@ -40,13 +78,22 @@ def train_MLP(model, batch_function, lr=1e-2, max_iter=int(1e3), loss_checkpoint
     if has_abs and is_relative or not has_abs and not is_relative:
         raise ValueError("Provide exactly one of loss_checkpoints OR percent_thresholds.")
 
+    opt_cls = _resolve_cls(optimizer, optim)
+    opt_kwargs, kwargs = _extract_kwargs_for(opt_cls, kwargs)
+    loss_cls = _resolve_cls(loss, nn)
+    loss_kwargs, kwargs = _extract_kwargs_for(loss_cls, kwargs)
+
     # model stuff
     lr = lr * gamma if gamma >= 1 else lr * (gamma**2.)
-    opt = torch.optim.SGD(model.parameters(), lr=lr)
+    opt_kwargs.setdefault("lr", lr)
+
+    opt = opt_cls(model.parameters(), **opt_kwargs)
+    # opt = torch.optim.SGD(model.parameters(), lr=lr)
     mupify(model, opt, param="mup")
     rescale(model, gamma)
     model = centeredMLP(model).to(next(model.parameters()).device)
-    loss_fn = torch.nn.MSELoss()
+    loss_fn = loss_cls(**loss_kwargs)
+    # loss_fn = torch.nn.MSELoss()
 
     # thresholding
     thresholds = np.asarray(percent_thresholds if is_relative else loss_checkpoints, dtype=float)

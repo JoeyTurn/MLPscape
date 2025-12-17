@@ -94,7 +94,6 @@ def main(iterators, iterator_names=None, global_config=None, bfn_config=None,
                 # Now reuse the *same unpacking logic* you already have
                 if kind == "ok":
                     job, timekeys, train_losses, test_losses, *others = payload
-                    job = job[:-1] + (str(job[-1]),)
                     # Store results indexed by job tuple
                     et_losses[job] = test_losses
                     et_timekeys[job] = timekeys

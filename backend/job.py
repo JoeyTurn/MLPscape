@@ -55,15 +55,6 @@ def run_job(device_id, job, global_config, bfn_config, iterator_names, **kwargs)
 
     bfn = make_bfn(job[0], X=X_tr, y=y_tr, **iter_spec)
     
-    # name = bfn_config_copy.pop("bfn_name")#["bfn_name"]
-    # base_bfn = BATCH_FNS[name]
-    # bfn = lambda n, X, y, **kwargs: base_bfn(**bfn_config_copy, bsz=n, gen=GEN, X=X, y=y, **kwargs)
-    # X_te, y_te = bfn(n=global_config["N_TEST"], X=None, y=None, **iter_spec)(0)
-    
-    # X_tr, y_tr = bfn(job[0], X=None, y=None, **iter_spec)(job[1]) if not global_config["ONLINE"] else None, None
-    
-    # bfn = bfn(job[0], X=X_tr, y=y_tr, **iter_spec)
-    
     model = MLP(d_in=global_config["DIM"], depth=global_config["DEPTH"],
                 d_out=1, width=global_config["WIDTH"]).to(device)
 
@@ -79,8 +70,8 @@ def run_job(device_id, job, global_config, bfn_config, iterator_names, **kwargs)
         verbose=global_config["VERBOSE"],
         X_tr=X_tr, y_tr=y_tr,
         X_te=X_te, y_te=y_te,
-        otherreturns=global_config.get("otherreturns", {}),
-        **kwargs,
+        # otherreturns=global_config.get("otherreturns", {}),
+        **global_config,
     )
 
     timekeys = outdict["timekeys"]
