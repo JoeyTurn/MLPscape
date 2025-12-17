@@ -101,8 +101,7 @@ if __name__ == "__main__":
         ONLINE=args.ONLINE, VERBOSE=args.VERBOSE
         )
 
-    grabs = build_other_grabs(args.other_model_grabs, default_source=args.W_source, concat_outside=args.concat_outside,
-        per_alias_gram=args.other_model_gram, per_alias_kwargs=args.other_model_kwargs,)
+    grabs = build_other_grabs(args.other_model_grabs, per_alias_kwargs=args.other_model_kwargs,)
     global_config.update({"otherreturns": grabs})
     
     mp.set_start_method("spawn", force=True)
