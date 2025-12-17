@@ -2,6 +2,8 @@ import numpy as np
 import torch
 
 import torch.multiprocessing as mp
+import sys
+sys.path.append("/home/user/MLP/")
 from backend.cli import parse_args, build_other_grabs
 
 from data.monomial import Monomial
@@ -13,6 +15,26 @@ from data.ntk_coeffs import get_relu_level_coeff_fn
 import os, sys
 from FileManager import FileManager
 
+from backend.utils import ensure_torch
+from data.data import get_new_polynomial_data
+
+def polynomial_batch_fn(lambdas, Vt, monomials, bsz, data_eigvals, N=10,
+                X=None, y=None, data_creation_fn=get_new_polynomial_data, gen=None):
+    lambdas, Vt, data_eigvals = map(ensure_torch, (lambdas, Vt, data_eigvals))
+    dim = len(data_eigvals)
+    def batch_fn(step: int, X=X, y=y):
+        if (X is not None) and (y is not None):
+            X_fixed = ensure_torch(X)
+            y_fixed = ensure_torch(y)
+            return X_fixed, y_fixed
+        with torch.no_grad():
+            dcf_args = dict(lambdas=lambdas, Vt=Vt, monomials=monomials, dim=dim,
+                            N=bsz, data_eigvals=data_eigvals, N_original=N, gen=gen)
+            X, y = data_creation_fn(**dcf_args)
+        X, y = map(ensure_torch, (X, y))
+        return X, y
+    
+    return batch_fn
 
 if __name__ == "__main__":
 
@@ -69,9 +91,7 @@ if __name__ == "__main__":
     dim = X_full.shape[1]
 
     ## --- Target function defs ---
-    target_monomials = args.TARGET_MONOMIALS
-    targets = target_monomials
-    bfn_config = dict(lambdas=lambdas, Vt=Vt, data_eigvals=data_eigvals, N=args.N_TOT, bfn_name="polynomial_batch_fn")
+    bfn_config = dict(lambdas=lambdas, Vt=Vt, data_eigvals=data_eigvals, N=args.N_TOT, base_bfn=polynomial_batch_fn)
     
 
     global_config = dict(DEPTH=args.DEPTH, WIDTH=args.WIDTH, LR=args.LR, GAMMA=args.GAMMA,

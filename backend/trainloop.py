@@ -116,7 +116,7 @@ def train_MLP(model, batch_function, lr=1e-2, max_iter=int(1e3), loss_checkpoint
             te_losses[i] = ema_te
             if otherreturns is not None:
                 for name, fn in items:
-                    val = fn(model=model.model, X_tr=X_tr, y_tr=y_tr, X_te=X_te, y_te=y_te, monomial=kwargs.get("monomial", None)) #the model.model to unwrap from centeredMLP
+                    val = fn(model=model.model, X_tr=X_tr, y_tr=y_tr, X_te=X_te, y_te=y_te, **kwargs) #the model.model to unwrap from centeredMLP
                     extras[name][i] = val
                     
         if verbose:

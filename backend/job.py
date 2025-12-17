@@ -1,10 +1,28 @@
 import torch
 import gc
+import importlib
 
 from .utils import seed_everything, derive_seed
 from model import MLP
 from .trainloop import train_MLP
-from data.batch_functions import BATCH_FNS
+
+def load_fn_from_file(path, name):
+    """
+    Load a function `name` from a Python source file at `path`.
+    This does NOT rely on the module being on PYTHONPATH.
+    """
+    spec = importlib.util.spec_from_file_location("bfn_module", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+    return getattr(mod, name)
+
+
+def get_base_bfn(bfn_config):
+    if "base_bfn" in bfn_config:
+        return bfn_config["base_bfn"]  # actual callable
+    if "bfn_file" in bfn_config and "bfn_name" in bfn_config:
+        return load_fn_from_file(bfn_config["bfn_file"], bfn_config["bfn_name"])
+    raise ValueError("No batch function specified in bfn_config")
 
 def run_job(device_id, job, global_config, bfn_config, iterator_names, **kwargs):
     """
@@ -25,14 +43,26 @@ def run_job(device_id, job, global_config, bfn_config, iterator_names, **kwargs)
     torch.set_num_threads(1)  # avoid CPU contention when many procs
 
     bfn_config_copy = bfn_config.copy()
-    name = bfn_config_copy.pop("bfn_name")#["bfn_name"]
-    base_bfn = BATCH_FNS[name]
-    bfn = lambda n, X, y, **kwargs: base_bfn(**bfn_config_copy, bsz=n, gen=GEN, X=X, y=y, **kwargs)
-    X_te, y_te = bfn(n=global_config["N_TEST"], X=None, y=None, **iter_spec)(0)
+    base_bfn = get_base_bfn(bfn_config_copy)
+    for key in ("base_bfn", "bfn_file", "bfn_name"):
+        bfn_config_copy.pop(key, None)
+
+    def make_bfn(n, X, y, **kwargs):
+        return base_bfn(**bfn_config_copy, bsz=n, gen=GEN, X=X, y=y, **kwargs)
     
-    X_tr, y_tr = bfn(job[0], X=None, y=None, **iter_spec)(job[1]) if not global_config["ONLINE"] else None, None
+    X_te, y_te = make_bfn(n=global_config["N_TEST"], X=None, y=None, **iter_spec)(0)
+    X_tr, y_tr = make_bfn(job[0], X=None, y=None, **iter_spec)(job[1]) if not global_config["ONLINE"] else None, None
+
+    bfn = make_bfn(job[0], X=X_tr, y=y_tr, **iter_spec)
     
-    bfn = bfn(job[0], X=X_tr, y=y_tr, **iter_spec)
+    # name = bfn_config_copy.pop("bfn_name")#["bfn_name"]
+    # base_bfn = BATCH_FNS[name]
+    # bfn = lambda n, X, y, **kwargs: base_bfn(**bfn_config_copy, bsz=n, gen=GEN, X=X, y=y, **kwargs)
+    # X_te, y_te = bfn(n=global_config["N_TEST"], X=None, y=None, **iter_spec)(0)
+    
+    # X_tr, y_tr = bfn(job[0], X=None, y=None, **iter_spec)(job[1]) if not global_config["ONLINE"] else None, None
+    
+    # bfn = bfn(job[0], X=X_tr, y=y_tr, **iter_spec)
     
     model = MLP(d_in=global_config["DIM"], depth=global_config["DEPTH"],
                 d_out=1, width=global_config["WIDTH"]).to(device)

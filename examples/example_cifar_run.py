@@ -3,13 +3,26 @@ import torch
 
 import torch.multiprocessing as mp
 from backend.cli import parse_args, build_other_grabs
-
 from backend.job_iterator import main as run_job_iterator
 from backend.utils import ensure_torch
 
 import os, sys
 from FileManager import FileManager
 
+def general_batch_fn(X_total, y_total, X=None, y=None, bsz=128,
+                     gen=None, **kwargs):
+    def batch_fn(step: int, X=X, y=y):
+        if (X is not None) and (y is not None):
+            X = ensure_torch(X)
+            y = ensure_torch(y)
+            return X, y
+        with torch.no_grad():
+            N_total = X_total.shape[0]
+            indices = torch.randint(0, N_total, (bsz,), generator=gen, device=gen.device)
+            X_batch = ensure_torch(X_total.to(gen.device)[indices])
+            y_batch = ensure_torch(y_total.to(gen.device)[indices])
+            return X_batch, y_batch
+    return batch_fn
 
 if __name__ == "__main__":
 
@@ -73,7 +86,7 @@ if __name__ == "__main__":
     U, lambdas, Vt = torch.linalg.svd(X_full, full_matrices=False)
     dim = X_full.shape[1]
 
-    bfn_config = dict(X_total = X_full, y_total = y_full, bfn_name="general_batch_fn")
+    bfn_config = dict(X_total = X_full, y_total = y_full, base_bfn=general_batch_fn)
     del X_full, y_full   
 
     global_config = dict(DEPTH=args.DEPTH, WIDTH=args.WIDTH, LR=args.LR, GAMMA=args.GAMMA,

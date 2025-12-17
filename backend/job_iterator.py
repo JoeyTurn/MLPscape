@@ -5,17 +5,38 @@ import torch.multiprocessing as mp
 from tqdm import tqdm
 from itertools import product
 
-device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+import inspect
+import os
 
-from .utils import ensure_torch
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 from ExptTrace import ExptTrace
 
 from .worker import worker
+from .job import run_job
 
+
+def normalize_bfn_config(bfn_config, use_mp=False):
+    cfg = dict(bfn_config)  # shallow copy
+
+    if "base_bfn" in cfg and use_mp:
+        fn = cfg.pop("base_bfn")
+
+        source_file = inspect.getsourcefile(fn)
+        if source_file is None:
+            raise RuntimeError(
+                f"Can't locate source file for base_bfn {fn}. "
+                "Is it defined in an interactive session / notebook?"
+            )
+
+        cfg["bfn_file"] = os.path.abspath(source_file)
+        cfg["bfn_name"] = fn.__name__
+        
+    return cfg
 
 ## --- Multiprocessing execution ---
-def main(iterators, iterator_names=None, global_config=None, bfn_config=None):
+def main(iterators, iterator_names=None, global_config=None, bfn_config=None,
+         use_mp: bool | None = None):
     """
     Run jobs across multiple iterators in parallel.
 
@@ -45,6 +66,71 @@ def main(iterators, iterator_names=None, global_config=None, bfn_config=None):
     grab_aliases = list(global_config.get("otherreturns", {}).keys()) if global_config is not None else []
     et_extras = {alias: ExptTrace(var_axes) for alias in grab_aliases}
     
+    if use_mp is None:
+        # If the user explicitly called mp.set_start_method("spawn", ...)
+        # somewhere before, this will be 'spawn'; otherwise None.
+        start_method = mp.get_start_method(allow_none=True)
+        use_mp = (start_method == "spawn")
+
+    bfn_config = normalize_bfn_config(bfn_config, use_mp=use_mp)
+    done = 0
+
+    ### No multiprocessing
+
+    # --- single-process path (good for ipynb-local bfns) ---
+    if not use_mp:
+        total = len(jobs)
+        with tqdm(total=total, desc="Runs", dynamic_ncols=True) as pbar:
+            for job in jobs:
+                try:
+                    dev = 0
+                    payload = run_job(dev, job, global_config, bfn_config, iterator_names)
+                    kind, out = "ok", payload
+                except Exception as e:
+                    import traceback
+                    tb = traceback.format_exc()
+                    kind, out = "err", (job, repr(e), tb)
+
+                # Now reuse the *same unpacking logic* you already have
+                if kind == "ok":
+                    job, timekeys, train_losses, test_losses, *others = payload
+                    job = job[:-1] + (str(job[-1]),)
+                    # Store results indexed by job tuple
+                    et_losses[job] = test_losses
+                    et_timekeys[job] = timekeys
+                    
+                    # Store any extra outputs from global_config
+                    for kidx, k in enumerate(grab_aliases):
+                        et_extras[k][job] = others[kidx]
+                    
+                    if not(global_config["ONLYTHRESHOLDS"]):
+                        train_losses = train_losses[-1]
+                        test_losses = test_losses[-1]
+                    
+                    job_str = " | ".join([f"{name}={val}" for name, val in zip(iterator_names, job)])
+                    pbar.set_postfix_str(
+                        f"train {test_losses:.3g} | test {train_losses:.3g} | timekey {timekeys} | {job_str}",
+                        refresh=False
+                    )
+                else:
+                    job, err = payload
+                    print(f"[ERROR] {job}: {err}")
+
+                done += 1
+                pbar.update(1)
+
+        result = {
+        "jobs": jobs,
+        "var_axes": var_axes,
+        "losses": et_losses.serialize(),
+        "timekeys": et_timekeys.serialize(),
+        "extras": {name: et_extras[name].serialize() for name in grab_aliases},
+        }
+
+        return result
+
+    ### With multiprocessing
+
     # Set up multiprocessing context and queues
     ctx = get_context("spawn")
     job_queue = ctx.Queue()
@@ -68,7 +154,6 @@ def main(iterators, iterator_names=None, global_config=None, bfn_config=None):
         p.start()
 
     total = len(jobs)
-    done = 0
     
     # Collect results from workers
     with tqdm(total=total, desc="Runs", dynamic_ncols=True) as pbar:
