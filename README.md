@@ -30,21 +30,14 @@ The core trainloop is built off of batch functions. As long as a specified batch
 **Batch function py note:** If using a .py file, please place your bfn outside of any `if __name__ == "__main__":` calls so it can be found by an importer.
 **Batch function ipynb note:** If using a .ipynb file, please don't initialize multiprocessing if you use a within-notebook batch function. Either have it in a separate .py file that gets imported, or don't call `mp.set_start_method("spawn", force=True)`.
 
-To define within-trainloop function grabs, either **(1)** define the function in the file, and let make sure to update the *otherreturns* component of *global_config* (shown below); or **(2)** put your specified function within **data/mlp_grabs.py** and specify that the function should be used by with the *other_model_grabs* argument. For both cases, make sure \*\*kwargs is taken as an argument.
+To define within-trainloop function grabs, define the function in the file, and make sure to update the *otherreturns* component of *global_config* (shown below). Make sure \*\*kwargs is taken as an argument to your function!
 
-**Option 1 (RECOMMENDED)**
-Build grabs and update it to include your function!
 ```python
-grabs = build_other_grabs(args.other_model_grabs, per_alias_kwargs=args.other_model_kwargs,)
-grabs.update({"sample_name": your_function}) #your function not in a string!
+def your_function(stuff, **kwargs):
+    return stuff**2
+
+grabs = {"sample_name": your_function, "sample_fn_2": your_2nd_fn}
 global_config.update({"otherreturns": grabs})
-```
-
-**Option 2 (Old)**
-If your function uses the model, or if there is anything specific to your function such as a fixed index, use the *other_model_gram* argument ("call_with_model" for using the model, or else it defaults to grabbing weight matrices). An example shown below:
-```python
-args.other_model_grabs = {"sample_name": "your_function", "sample_name_2": "your_function_2"}
-args.other_model_gram = {"sample_name": {"call_with_model": True, "index": 0}}
 ```
 
 For the list of configurable hyperparameters and their default values, see below:
