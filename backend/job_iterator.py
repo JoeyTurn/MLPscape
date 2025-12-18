@@ -112,7 +112,7 @@ def main(iterators, iterator_names=None, global_config=None, bfn_config=None,
                         refresh=False
                     )
                 else:
-                    job, err = payload
+                    job, err = out
                     print(f"[ERROR] {job}: {err}")
 
                 done += 1
