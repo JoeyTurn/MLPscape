@@ -51,6 +51,12 @@ def train_MLP(model, batch_function, lr=1e-2, max_iter=int(1e3), loss_checkpoint
             for name, _ in list(otherreturns.items()):
                 extras[name][i:] = extras[name][i]
         return tr_losses, te_losses, extras
+
+    # Convert float-like values to lists
+    if loss_checkpoints is not None and not isinstance(loss_checkpoints, (list, tuple, np.ndarray)):
+        loss_checkpoints = np.array([loss_checkpoints])
+    if percent_thresholds is not None and not isinstance(percent_thresholds, (list, tuple, np.ndarray)):
+        percent_thresholds = np.array([percent_thresholds])
     
     #checking if losses are absolute or relative
     has_abs = (loss_checkpoints is not None) and len(loss_checkpoints) > 0

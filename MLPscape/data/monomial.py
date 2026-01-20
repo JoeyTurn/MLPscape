@@ -1,5 +1,5 @@
 import heapq
-from backend.utils import ensure_numpy, ensure_torch
+from MLPscape.backend.utils import ensure_numpy, ensure_torch
 import numpy as np
 import torch
 

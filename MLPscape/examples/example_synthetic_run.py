@@ -3,7 +3,7 @@ import torch
 
 import torch.multiprocessing as mp
 import sys
-from MLPscape.backend.cli import parse_args, build_other_grabs
+from MLPscape.backend.cli import parse_args
 
 from MLPscape.data.monomial import Monomial
 from MLPscape.backend.job_iterator import main as run_job_iterator
@@ -14,7 +14,6 @@ from MLPscape.data.ntk_coeffs import get_relu_level_coeff_fn
 import os, sys
 from FileManager import FileManager
 
-from MLPscape.backend.utils import ensure_torch
 from MLPscape.data.data import get_new_polynomial_data
 
 def polynomial_batch_fn(lambdas, Vt, monomials, bsz, data_eigvals, N=10,
@@ -39,25 +38,31 @@ if __name__ == "__main__":
 
     args = parse_args() #default args
 
+    args.TARGET_MONOMIALS = [Monomial({0:1}), Monomial({1:1})] # user-set
+    target_monomials_path = None
+    datasethps_path = None
+
     if args.TARGET_MONOMIALS is not None:
         args.TARGET_MONOMIALS = [Monomial(m) for m in args.TARGET_MONOMIALS]
-    elif args.target_monomials_path:
-        target_monomials_json = load_json(args.target_monomials_path)
+    elif target_monomials_path is not None:
+        target_monomials_json = load_json(target_monomials_path)
         args.TARGET_MONOMIALS = [Monomial(m) for m in target_monomials_json]
     elif args.TARGET_MONOMIALS is None:
         args.TARGET_MONOMIALS = [Monomial({10: 1}), Monomial({190:1}), Monomial({0:2}), Monomial({2:1, 3:1}), Monomial({15:1, 20:1}), Monomial({0:3}),]
         
-    if args.datasethps_path:
-        args.datasethps = load_json(args.datasethps_path)
+    if datasethps_path:
+        args.datasethps = load_json(datasethps_path)
 
     # Set any args that we want to differ
     args.ONLINE = True
     args.N_TRAIN=4000
     args.N_TEST=1000
     args.N_TOT = args.N_TEST+args.N_TRAIN
-    args.TARGET_MONOMIALS = [Monomial({0:1}), Monomial({1:1})]
     args.NUM_TRIALS = 2
     args.N_SAMPLES = [1024]
+    args.datasethps = {"normalized": True, "cutoff_mode": 40000, "d": 200, "offset": 6, "alpha": 2.0,
+                       "noise_size": 1, "yoffset": 1.2, "beta": 1.2, "binarize": False,"weight_variance": 1, "bias_variance": 1}
+
 
     iterators = [args.N_SAMPLES, range(args.NUM_TRIALS), args.TARGET_MONOMIALS]
     iterator_names = ["ntrain", "trial", "monomials"]
@@ -68,9 +73,7 @@ if __name__ == "__main__":
         raise ValueError("must set $DATASETPATH environment variable")
     if exptpath is None:
         raise ValueError("must set $EXPTPATH environment variable")
-    expt_name = "example_mlp_run"
-    dataset = "synthetic"
-    expt_dir = os.path.join(exptpath, "example_folder", expt_name, dataset)
+    expt_dir = os.path.join(exptpath, "example_folder", "example_mlp_run", "synthetic")
 
     if not os.path.exists(expt_dir):
         os.makedirs(expt_dir)
@@ -100,7 +103,7 @@ if __name__ == "__main__":
         ONLINE=args.ONLINE, VERBOSE=args.VERBOSE
         )
 
-    grabs = build_other_grabs(args.other_model_grabs, per_alias_kwargs=args.other_model_kwargs,)
+    grabs = {}
     global_config.update({"otherreturns": grabs})
     
     mp.set_start_method("spawn", force=True)

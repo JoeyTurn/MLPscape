@@ -2,7 +2,7 @@ import numpy as np
 import torch
 
 import torch.multiprocessing as mp
-from MLPscape.backend.cli import parse_args, build_other_grabs
+from MLPscape.backend.cli import parse_args
 from MLPscape.backend.job_iterator import main as run_job_iterator
 from MLPscape.backend.utils import ensure_torch
 
@@ -38,6 +38,9 @@ if __name__ == "__main__":
     args.NUM_TRIALS = 2
     args.N_SAMPLES = [1024]
     args.GAMMA = [0.1, 1, 10]
+    args.MAX_ITER = 5e2
+    args.LR = 2e-1
+    args.LOSS_CHECKPOINTS = 0.1
 
     iterators = [args.N_SAMPLES, range(args.NUM_TRIALS), args.GAMMA]
     iterator_names = ["ntrain", "trial", "GAMMA"]
@@ -48,9 +51,7 @@ if __name__ == "__main__":
         raise ValueError("must set $DATASETPATH environment variable")
     if exptpath is None:
         raise ValueError("must set $EXPTPATH environment variable")
-    expt_name = "example_mlp_run"
-    dataset = "synthetic"
-    expt_dir = os.path.join(exptpath, "example_folder", expt_name, dataset)
+    expt_dir = os.path.join(exptpath, "example_folder", "example_mlp_run", "synthetic")
 
     if not os.path.exists(expt_dir):
         os.makedirs(expt_dir)
@@ -60,8 +61,8 @@ if __name__ == "__main__":
 
     from ImageData import ImageData, preprocess
     PIXEL_NORMALIZED =  False # Don't normalize pixels, normalize samples
-    classes = args['CLASSES'] if args.datasethps is not None else args.datasethps.get('classes', None)
-    normalized = args['NORMALIZED'] if args.datasethps is not None else args.datasethps.get('normalized', True)
+    classes = args.CLASSES
+    normalized = args.NORMALIZED
 
     if classes is not None:
         imdata = ImageData('cifar10', "../data", classes=classes, onehot=len(classes)!=2)
@@ -96,7 +97,7 @@ if __name__ == "__main__":
         ONLINE=args.ONLINE, VERBOSE=args.VERBOSE
         )
 
-    grabs = build_other_grabs(args.other_model_grabs, per_alias_kwargs=args.other_model_kwargs,)
+    grabs = {}
     global_config.update({"otherreturns": grabs})
     
     mp.set_start_method("spawn", force=True)

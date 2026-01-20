@@ -2,7 +2,7 @@ import torch
 import gc
 import importlib
 
-from MLPscape.backend.utils import seed_everything, derive_seed, _extract_kwargs_for
+from MLPscape.backend.utils import seed_everything, derive_seed, _extract_kwargs_for, ensure_torch
 from MLPscape.model import MLP
 from MLPscape.backend.trainloop import train_MLP
 
@@ -23,6 +23,7 @@ def get_base_bfn(bfn_config):
     if "bfn_file" in bfn_config and "bfn_name" in bfn_config:
         return load_fn_from_file(bfn_config["bfn_file"], bfn_config["bfn_name"])
     raise ValueError("No batch function specified in bfn_config")
+
 
 def run_job(device_id, job, global_config, bfn_config, iterator_names, **kwargs):
     """
@@ -52,7 +53,11 @@ def run_job(device_id, job, global_config, bfn_config, iterator_names, **kwargs)
 
     bfn_iter_args, _ = _extract_kwargs_for(base_bfn, iter_spec)
     
-    X_te, y_te = make_bfn(n=global_config["N_TEST"], X=None, y=None, **bfn_iter_args)(0)
+    if global_config.get("X_te", None) is not None and global_config.get("y_te", None) is not None:
+        X_te = ensure_torch(global_config["X_te"])
+        y_te = ensure_torch(global_config["y_te"])
+    else:
+        X_te, y_te = make_bfn(n=global_config["N_TEST"], X=None, y=None, **bfn_iter_args)(0)
     X_tr, y_tr = make_bfn(job[0], X=None, y=None, **bfn_iter_args)(job[1]) if not global_config["ONLINE"] else None, None
 
     bfn = make_bfn(job[0], X=X_tr, y=y_tr, **bfn_iter_args)

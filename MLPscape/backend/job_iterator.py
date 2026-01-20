@@ -67,7 +67,6 @@ def main(iterators, iterator_names=None, global_config=None, bfn_config=None,
     Returns:
         dict with keys: "jobs", "var_axes", "losses", "timekeys", "extras"
     """
-    
     if iterator_names is None:
         iterator_names = [f"iter_{i}" for i in range(len(iterators))]
     elif len(iterator_names) != len(iterators):
